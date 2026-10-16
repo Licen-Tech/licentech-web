@@ -1,0 +1,79 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"
+  url = env("DATABASE_URL") }
+
+enum Role { USER ADMIN }
+enum OrderStatus { PENDING PAID PAID_NO_STOCK FAILED }
+enum LicenseStatus { AVAILABLE SOLD }
+
+model User {
+  id              String      @id @default(cuid())
+  name            String
+  email           String      @unique
+  passwordHash    String
+  phone           String?     @unique
+  phoneVerifiedAt DateTime?
+  role            Role        @default(USER)
+  createdAt       DateTime    @default(now())
+  orders          Order[]
+  phoneCodes      PhoneCode[]
+}
+
+model PhoneCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  @@index([userId, createdAt])
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  vendor      String
+  version     String
+  description String    @db.Text
+  priceCop    Int       // pesos enteros (COP no usa decimales)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  orders      Order[]
+  licenses    License[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  reference     String      @unique
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Int         @default(1)
+  amountCop     Int
+  status        OrderStatus @default(PENDING)
+  wompiTxId     String?     @unique
+  paymentMethod String?
+  paidAt        DateTime?
+  createdAt     DateTime    @default(now())
+  licenses      License[]
+  @@index([userId, createdAt])
+}
+
+model License {
+  id        String        @id @default(cuid())
+  productId String
+  product   Product       @relation(fields: [productId], references: [id])
+  keyEnc    String        // AES-256-GCM
+  keyHash   String        @unique // HMAC: evita claves duplicadas sin guardarlas en claro
+  status    LicenseStatus @default(AVAILABLE)
+  orderId   String?
+  order     Order?        @relation(fields: [orderId], references: [id])
+  soldAt    DateTime?
+  createdAt DateTime      @default(now())
+  @@index([productId, status])
+}
