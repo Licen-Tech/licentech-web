@@ -35,12 +35,10 @@ export async function POST(req: Request) {
     orderAccess = createOrderAccess(reference, new URL(req.url).origin);
     checkoutUrl = createWebCheckoutUrl(reference, amountCop, buyer.buyerEmail, orderAccess.trackingUrl);
   } catch (error) {
+    // El detalle (qué variable falta) queda en los logs del servidor, no en la página del comprador.
     console.error("Error creando el checkout de Wompi:", error);
-    const detail = error instanceof Error ? error.message : "";
     return NextResponse.json({
-      error: /^(Faltan variables|APP_URL)/.test(detail)
-        ? detail
-        : "Revisa que las llaves y secretos de Wompi sean válidos y pertenezcan todos al mismo entorno (Sandbox o Producción).",
+      error: "El pago con tarjeta no está disponible en este momento. Usa el pago manual o inténtalo más tarde.",
     }, { status: 503 });
   }
 
