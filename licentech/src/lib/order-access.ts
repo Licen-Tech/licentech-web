@@ -3,7 +3,8 @@ import { createHash, randomBytes, timingSafeEqual } from "crypto";
 export function createOrderAccess(reference: string) {
   const accessToken = randomBytes(32).toString("hex");
   const accessTokenHash = createHash("sha256").update(accessToken).digest("hex");
-  const trackingUrl = new URL(`/pedido/${encodeURIComponent(reference)}`, process.env.APP_URL);
+  const appUrl = (process.env.APP_URL ?? "").trim().replace(/^["']|["']$/g, "").trim();
+  const trackingUrl = new URL(`/pedido/${encodeURIComponent(reference)}`, appUrl);
   trackingUrl.searchParams.set("token", accessToken);
   return { accessTokenHash, trackingUrl: trackingUrl.toString() };
 }
