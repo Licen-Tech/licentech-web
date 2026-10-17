@@ -35,16 +35,10 @@ export async function POST(req: Request) {
     orderAccess = createOrderAccess(reference, new URL(req.url).origin);
     checkoutUrl = createWebCheckoutUrl(reference, amountCop, buyer.buyerEmail, orderAccess.trackingUrl);
   } catch (error) {
-    // El detalle completo queda en los logs del servidor.
+    // El detalle completo queda solo en los logs del servidor; al cliente nunca se le muestra.
     console.error("Error creando el checkout de Wompi:", error);
-    // DEPURACIÓN TEMPORAL (quitar al terminar): error real, commit desplegado, entorno y si cada variable existe (sí/no). Nunca valores.
-    const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-    const present = (value: string | undefined) => (value && value.trim() ? "sí" : "no");
-    const vars = `PUB=${present(process.env.WOMPI_PUBLIC_KEY)} PRIV=${present(process.env.WOMPI_PRIVATE_KEY)} INT=${present(process.env.WOMPI_INTEGRITY_SECRET)} EVT=${present(process.env.WOMPI_EVENTS_SECRET)} APP_URL=${present(process.env.APP_URL)}`;
-    const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? "desconocido").slice(0, 7);
-    const environment = process.env.VERCEL_ENV ?? "desconocido";
     return NextResponse.json({
-      error: `DEBUG · ${detail.slice(0, 300)} · variables: ${vars} · commit ${commit} · entorno ${environment}`,
+      error: "No se puede procesar el pago en este momento. Inténtalo de nuevo más tarde.",
     }, { status: 503 });
   }
 
