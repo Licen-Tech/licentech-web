@@ -8,6 +8,8 @@ import { createOrderAccess } from "@/lib/order-access";
 import { normalizeCheckoutItems, resolveCheckoutItems } from "@/lib/checkout";
 import { checkoutPrice } from "@/lib/checkout-pricing";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   const session = await getSession();
 
@@ -26,14 +28,20 @@ export async function POST(req: Request) {
   const subtotalCop = resolved.lines.reduce((sum, line) => sum + line.unitPriceCop * line.quantity, 0);
   const amountCop = checkoutPrice(subtotalCop).totalCop;
   const reference = `LT-${Date.now()}-${randomBytes(4).toString("hex")}`;
-  const orderAccess = createOrderAccess(reference);
-  let checkoutUrl: ReturnType<typeof createWebCheckoutUrl>;
+
+  let orderAccess: ReturnType<typeof createOrderAccess>;
+  let checkoutUrl: string;
   try {
+    orderAccess = createOrderAccess(reference);
     checkoutUrl = createWebCheckoutUrl(reference, amountCop, buyer.buyerEmail, orderAccess.trackingUrl);
   } catch (error) {
-    console.error(error);
+    console.error("Error creando el checkout de Wompi:", error);
+    const detail = error instanceof Error ? error.message : "";
+    const isUrlError = /invalid url/i.test(detail);
     return NextResponse.json({
-      error: "Revisa que las llaves y secretos de Wompi sean válidos y pertenezcan todos al mismo entorno (Sandbox o Producción).",
+      error: isUrlError
+        ? "APP_URL no es válida. Debe incluir el protocolo, por ejemplo https://tudominio.co"
+        : "Revisa que las llaves y secretos de Wompi sean válidos y pertenezcan todos al mismo entorno (Sandbox o Producción).",
     }, { status: 503 });
   }
 
