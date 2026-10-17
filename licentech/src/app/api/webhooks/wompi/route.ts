@@ -3,6 +3,10 @@ import { verifyEvent, getTransaction } from "@/lib/wompi";
 
 export const runtime = "nodejs";
 
+export function GET() {
+  return new Response("ok");
+}
+
 export async function POST(req: Request) {
   const event = await req.json().catch(() => null);
   if (!event || !verifyEvent(event)) return new Response("firma inválida", { status: 401 });

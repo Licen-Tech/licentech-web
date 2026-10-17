@@ -5,12 +5,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { hmac } from "@/lib/crypto";
-import { phoneCO } from "@/lib/validation";
+import { phoneE164 } from "@/lib/validation";
 
 export async function POST(req: Request) {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  const parsed = z.object({ phone: phoneCO, code: z.string().regex(/^\d{6}$/) }).safeParse(await req.json().catch(() => null));
+  const parsed = z.object({ phone: phoneE164, code: z.string().regex(/^\d{6}$/) }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   const { phone, code } = parsed.data;
 

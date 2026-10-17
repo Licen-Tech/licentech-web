@@ -68,7 +68,7 @@ export default function CustomerReviews() {
         setMessage(error);
         return;
       }
-      setMessage("Gracias. Tu comentario será visible cuando lo apruebe el administrador.");
+      setMessage("Gracias. Tu comentario ya está publicado.");
       await load();
     } catch (error) {
       console.error("No se pudo guardar el comentario", error);
@@ -81,8 +81,8 @@ export default function CustomerReviews() {
   return (
     <section id="comentarios" className="space-y-5 rounded-xl border border-stone-200 bg-white p-5 sm:p-7" aria-labelledby="customer-reviews-title">
       <div>
-        <h2 id="customer-reviews-title" className="text-2xl font-semibold">Opiniones de clientes</h2>
-        <p className="mt-1 text-sm text-stone-600">Los comentarios se publican después de una revisión para mantener un espacio respetuoso y útil.</p>
+        <h2 id="customer-reviews-title" className="text-2xl font-semibold">Comentarios y opiniones</h2>
+        <p className="mt-1 text-sm text-stone-600">Las opiniones son públicas y se publican al instante. Cada usuario puede actualizar su calificación y comentario; administración puede retirar contenido que infrinja las normas.</p>
       </div>
       {loading ? (
         <p className="text-sm text-stone-500">Cargando opiniones…</p>
@@ -105,7 +105,7 @@ export default function CustomerReviews() {
         <form className="space-y-3 border-t border-stone-200 pt-4" onSubmit={submit}>
           <h3 className="font-medium">Comparte tu experiencia, {data.currentUser.name}</h3>
           {data.currentUser.review?.status === "PENDING" && (
-            <p className="text-sm text-amber-800">Tu comentario está pendiente de aprobación. Si lo editas, se revisará de nuevo.</p>
+            <p className="text-sm text-amber-800">Tu opinión anterior sigue pendiente de revisión. Si la actualizas, se publicará al instante.</p>
           )}
           <label className="block space-y-1 text-sm">
             <span>Calificación</span>

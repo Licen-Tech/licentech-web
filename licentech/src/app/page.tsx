@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Catalog from "@/components/Catalog";
+import CommunityForum from "@/components/CommunityForum";
 import CustomerReviews from "@/components/CustomerReviews";
 import Image from "next/image";
 import Link from "next/link";
@@ -88,6 +89,7 @@ export default async function Home() {
         </div>
       </section>
       <CustomerReviews />
+      <CommunityForum />
     </div>
   );
 }

@@ -9,13 +9,13 @@ const youtubeUrlSchema = httpsUrl.refine((value) => {
   return host === "youtu.be" || host === "youtube.com" || host.endsWith(".youtube.com");
 }, "Usa un enlace válido de YouTube.");
 
-export const phoneCO = z.string().regex(/^\+573\d{9}$/, "Formato: +573001234567");
+export const phoneE164 = z.string().regex(/^\+[1-9]\d{7,14}$/, "Ingresa el teléfono internacional con código de país, por ejemplo +573001234567.");
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().toLowerCase().email().max(120),
   password: z.string().min(10).max(72), // bcrypt solo usa los primeros 72 bytes
-  phone: phoneCO.optional(),
+  phone: phoneE164.optional(),
 });
 
 export const loginSchema = z.object({
@@ -28,7 +28,7 @@ const productBaseSchema = z.object({
   slug: z.string().trim().regex(/^[a-z0-9-]*$/, "Usa solo letras minúsculas, números y guiones en el slug.").max(80, "El slug no puede superar 80 caracteres.").default(""),
   vendor: z.string().trim().max(80, "El fabricante no puede superar 80 caracteres.").default(""),
   version: z.string().trim().max(40, "La versión no puede superar 40 caracteres.").default(""),
-  description: z.string().trim().max(4000, "La descripción no puede superar 4000 caracteres.").default(""),
+  description: z.string().trim().max(10000, "La descripción no puede superar 10.000 caracteres.").default(""),
   youtubeUrl: youtubeUrlSchema.nullable().default(null),
   officialUrl: httpsUrl.nullable().default(null),
   category: z.string().trim().min(2).max(80).default("Software"),
@@ -114,6 +114,7 @@ export const paymentMethodConfigSchema = z.object({
 });
 
 export const siteSettingsSchema = z.object({
+  logoMediaId: z.string().cuid().nullable().optional(),
   siteName: z.string().trim().min(2).max(100),
   heroTitle: z.string().trim().min(5).max(180),
   heroDescription: z.string().trim().max(2000),
@@ -121,6 +122,31 @@ export const siteSettingsSchema = z.object({
   supportEmail: z.union([z.literal(""), z.string().trim().email().max(120)]),
   whatsappNumber: z.string().trim().regex(/^\+?\d{0,15}$/),
   telegramUsername: z.string().trim().regex(/^@?[A-Za-z0-9_]{0,32}$/),
+});
+
+const navigationHref = z.string().trim().min(1).max(300).refine((value) => {
+  if (/[\u0000-\u001f\u007f]/.test(value) || value.startsWith("//")) return false;
+  if (value.startsWith("/")) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}, "Usa una ruta interna (por ejemplo /#productos) o una URL HTTPS segura.");
+
+export const navigationItemsSchema = z.array(z.object({
+  label: z.string().trim().min(1).max(50),
+  href: navigationHref,
+  active: z.boolean(),
+})).max(20).superRefine((items, ctx) => {
+  const hrefs = new Set<string>();
+  items.forEach((item, index) => {
+    if (hrefs.has(item.href)) {
+      ctx.addIssue({ code: "custom", path: [index, "href"], message: "No repitas el mismo destino en el menú." });
+    }
+    hrefs.add(item.href);
+  });
 });
 
 export const supportFaqSchema = z.object({
@@ -192,6 +218,15 @@ export const nequiProofDetailsSchema = z.object({
 export const customerReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
   comment: z.string().trim().min(10).max(1200),
+});
+
+export const forumTopicSchema = z.object({
+  title: z.string().trim().min(3, "El título debe tener al menos 3 caracteres.").max(120, "El título no puede superar 120 caracteres."),
+  content: z.string().trim().min(1, "Escribe el mensaje del tema.").max(2000, "El mensaje no puede superar 2000 caracteres."),
+});
+
+export const forumReplySchema = z.object({
+  content: z.string().trim().min(1, "Escribe una respuesta.").max(2000, "La respuesta no puede superar 2000 caracteres."),
 });
 
 export const licenseBatchSchema = z.object({

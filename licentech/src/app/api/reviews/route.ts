@@ -44,8 +44,8 @@ export async function POST(req: Request) {
 
   const review = await prisma.customerReview.upsert({
     where: { userId: user.id },
-    create: { userId: user.id, ...parsed.data },
-    update: { ...parsed.data, status: "PENDING" },
+    create: { userId: user.id, ...parsed.data, status: "APPROVED" },
+    update: { ...parsed.data, status: "APPROVED" },
     select: { status: true },
   });
   return NextResponse.json({ status: review.status }, { status: 201 });

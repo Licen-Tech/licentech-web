@@ -68,6 +68,10 @@ Antes de recibir pagos reales, activa y verifica el comercio de Wompi, habilita 
 - Antes de administrar productos en una base de datos existente, aplica las migraciones pendientes con `npx prisma migrate deploy`. Esto incluye `20261016215500_product_credits_support`, necesaria para créditos, rentas y las relaciones de imágenes del catálogo.
 - Aplica la migración `20261016143000_manual_payment_review` antes de usar el nuevo flujo: `npx prisma migrate deploy`.
 - Para compras de invitados y entrega por correo, aplica también la migración `20261016150000_guest_checkout`. Cada pedido tiene un enlace de seguimiento con token aleatorio; solo se almacena el hash del token.
+- Las secciones públicas de comentarios/opiniones y del foro son independientes. Las opiniones con calificación se publican de inmediato; los usuarios registrados pueden crear una opinión pública, que administración puede eliminar desde `/admin`.
+- El foro comunitario permite a usuarios registrados crear temas y responder con enlaces HTTP/HTTPS e imágenes JPG/PNG/WEBP (hasta 10 por mensaje, 4 MB combinados). Las publicaciones son inmediatas; administración puede eliminar temas y respuestas desde `/admin`. Aplica la migración `20261017020000_community_forum` con `npx prisma migrate deploy` antes de habilitar esta versión.
+- Para publicar videos, usa `/admin/contenido` → «Videos, tutoriales y descargas»: agrega el enlace de YouTube a un tutorial y marca «Publicar». La página inserta el reproductor de YouTube; el sistema almacena el enlace, no el video.
+- El logo del sitio se administra en `/admin/contenido` → «Inicio y contacto». Sube la imagen a la biblioteca multimedia y selecciónala como logo; aplica `20261017030000_site_brand_logo`. Las descripciones de productos se editan desde `/admin/productos` y admiten hasta 10.000 caracteres.
 
 ## 6. Pendientes antes de vender
 - **Rate limiting** en login/registro/OTP (Upstash Ratelimit o similar) y 2FA para administradores.

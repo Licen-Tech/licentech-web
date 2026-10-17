@@ -266,7 +266,10 @@ export default function ProductManager() {
             <button type="button" className="text-sm text-teal-900 underline" onClick={() => updateDraftRentalOptions([...draft.rentalOptions, { quantity: 1, unit: "MONTH", priceCop: 0, active: true }])}>Agregar duración de renta</button>
           </fieldset>
         )}
-        <textarea className={`${input} sm:col-span-2`} rows={3} placeholder="Descripción" value={draft.description} maxLength={4000} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+        <label className="space-y-1 text-sm sm:col-span-2">
+          <span>Descripción detallada del programa (hasta 10.000 caracteres; se muestra en su ficha pública)</span>
+          <textarea className={input} rows={6} placeholder="Funciones, requisitos, compatibilidad y condiciones de uso" value={draft.description} maxLength={10000} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+        </label>
         <input className={`${input} sm:col-span-2`} type="url" placeholder="Video tutorial de YouTube (opcional)" value={draft.youtubeUrl} onChange={(e) => setDraft({ ...draft, youtubeUrl: e.target.value })} />
         <input className={`${input} sm:col-span-2`} type="url" placeholder="URL de la página oficial (opcional)" value={draft.officialUrl} onChange={(e) => setDraft({ ...draft, officialUrl: e.target.value })} />
         <textarea className={`${input} sm:col-span-2`} rows={2} placeholder="Detalles de entrega o pasos para el cliente (opcional)" value={draft.deliveryDetails} maxLength={2000} onChange={(e) => setDraft({ ...draft, deliveryDetails: e.target.value })} />
@@ -371,7 +374,10 @@ export default function ProductManager() {
               <button type="button" className={btnSecondary} onClick={() => updateEditRentalOptions([...editingProduct.fields.rentalOptions, { quantity: 1, unit: "MONTH", priceCop: 1000, active: true }])}>Agregar duración de renta</button>
             </fieldset>
           )}
-          <textarea className={`${input} sm:col-span-2`} rows={4} placeholder="Descripción del producto" value={editingProduct.fields.description} onChange={(event) => updateEditFields({ description: event.target.value })} />
+          <label className="space-y-1 text-sm sm:col-span-2">
+            <span>Descripción detallada del programa (hasta 10.000 caracteres)</span>
+            <textarea className={input} rows={6} maxLength={10000} placeholder="Funciones, requisitos, compatibilidad y condiciones de uso" value={editingProduct.fields.description} onChange={(event) => updateEditFields({ description: event.target.value })} />
+          </label>
           <input className={`${input} sm:col-span-2`} type="url" placeholder="Video tutorial de YouTube" value={editingProduct.fields.youtubeUrl ?? ""} onChange={(event) => updateEditFields({ youtubeUrl: event.target.value || null })} />
           <input className={`${input} sm:col-span-2`} type="url" placeholder="URL de la página oficial (opcional)" value={editingProduct.fields.officialUrl ?? ""} onChange={(event) => updateEditFields({ officialUrl: event.target.value || null })} />
           <textarea className={`${input} sm:col-span-2`} rows={2} placeholder="Detalles de entrega" value={editingProduct.fields.deliveryDetails ?? ""} onChange={(event) => updateEditFields({ deliveryDetails: event.target.value })} />

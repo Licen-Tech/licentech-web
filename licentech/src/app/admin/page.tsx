@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { cop } from "@/lib/format";
 import PaymentReview from "@/components/admin/PaymentReview";
+import ForumModeration from "@/components/admin/ForumModeration";
 import ReviewModeration from "@/components/admin/ReviewModeration";
 import WalletReview from "@/components/admin/WalletReview";
 
@@ -9,12 +10,13 @@ export const dynamic = "force-dynamic";
 const label: Record<string, string> = { PENDING: "Esperando pago", REVIEW: "Por verificar", PAID: "Pagada", PAID_NO_STOCK: "Pagada sin stock", FAILED: "Fallida/rechazada" };
 
 export default async function Page() {
-  const [sales, users, noStock, reviewCount, pendingReviews, walletReviewCount, recent] = await Promise.all([
+  const [sales, users, noStock, reviewCount, pendingReviews, forumTopics, walletReviewCount, recent] = await Promise.all([
     prisma.order.aggregate({ where: { status: "PAID" }, _sum: { amountCop: true }, _count: true }),
     prisma.user.count(),
     prisma.order.count({ where: { status: "PAID_NO_STOCK" } }),
     prisma.order.count({ where: { status: "REVIEW" } }),
     prisma.customerReview.count({ where: { status: "PENDING" } }),
+    prisma.forumTopic.count(),
     prisma.walletTopUp.count({ where: { status: "REVIEW" } }),
     prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: 15, include: { product: true } }),
   ]);
@@ -24,7 +26,8 @@ export default async function Page() {
     ["Usuarios registrados", String(users)],
     ["Pagadas sin stock", String(noStock)],
     ["Pagos por verificar", String(reviewCount)],
-    ["Comentarios por moderar", String(pendingReviews)],
+    ["Opiniones pendientes", String(pendingReviews)],
+    ["Temas en el foro", String(forumTopics)],
     ["Recargas por verificar", String(walletReviewCount)],
   ];
   return (
@@ -41,6 +44,7 @@ export default async function Page() {
       <PaymentReview />
       <WalletReview />
       <ReviewModeration />
+      <ForumModeration />
       <h2 className="font-medium">Últimas transacciones</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">

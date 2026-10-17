@@ -28,25 +28,31 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const updated = await prisma.$transaction(async (tx) => {
     const topUp = await tx.walletTopUp.findUnique({ where: { id: params.id } });
-    if (!topUp || topUp.status !== "REVIEW") return false;
+    if (!topUp || topUp.status !== "REVIEW") return "unavailable";
+    const topUpUserId = topUp.userId;
+    if (body.action === "approve" && !topUpUserId) return "orphaned";
     const claimed = await tx.walletTopUp.updateMany({
       where: { id: topUp.id, status: "REVIEW" },
       data: { status: body.action === "approve" ? "APPROVED" : "REJECTED", reviewedAt: new Date() },
     });
-    if (!claimed.count) return false;
+    if (!claimed.count) return "unavailable";
     if (body.action === "approve") {
-      await tx.user.update({ where: { id: topUp.userId }, data: { walletBalanceCop: { increment: topUp.amountCop } } });
+      if (!topUpUserId) throw new Error("Una recarga aprobada debe tener una cuenta asociada.");
+      await tx.user.update({ where: { id: topUpUserId }, data: { walletBalanceCop: { increment: topUp.amountCop } } });
       await tx.walletTransaction.create({
         data: {
-          userId: topUp.userId,
+          userId: topUpUserId,
           amountCop: topUp.amountCop,
           description: `Recarga aprobada (${topUp.reference})`,
           topUpId: topUp.id,
         },
       });
     }
-    return true;
+    return "updated";
   });
-  if (!updated) return NextResponse.json({ error: "La recarga ya fue revisada o no existe." }, { status: 409 });
+  if (updated === "orphaned") {
+    return NextResponse.json({ error: "No se puede aprobar una recarga de una cuenta eliminada." }, { status: 409 });
+  }
+  if (updated !== "updated") return NextResponse.json({ error: "La recarga ya fue revisada o no existe." }, { status: 409 });
   return NextResponse.json({ ok: true });
 }

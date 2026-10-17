@@ -37,7 +37,7 @@ export default function Catalog({ products }: { products: CatalogProduct[] }) {
   }, [products, query, vendor]);
 
   return (
-    <section className="mt-10">
+    <section id="productos" className="mt-10 scroll-mt-28">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h2 className="text-2xl font-semibold">Catálogo de software</h2>

@@ -10,7 +10,7 @@ export default async function TutorialsPage() {
     select: { slug: true, title: true, category: true, summary: true, vipOnly: true, youtubeUrl: true },
   });
   return (
-    <section className="space-y-5">
+    <section id="videos" className="space-y-5 scroll-mt-28">
       <div>
         <p className="text-sm font-medium text-teal-800">LICENTECH · CENTRO DE APRENDIZAJE</p>
         <h1 className="mt-1 text-3xl font-semibold">Tutoriales y recursos</h1>

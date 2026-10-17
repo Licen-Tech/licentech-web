@@ -5,13 +5,13 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   if (!(await requireAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const reviews = await prisma.customerReview.findMany({
-    where: { status: "PENDING" },
-    orderBy: { createdAt: "asc" },
+    orderBy: { updatedAt: "desc" },
     select: {
       id: true,
       rating: true,
       comment: true,
       createdAt: true,
+      status: true,
       user: { select: { name: true, email: true } },
     },
   });

@@ -27,7 +27,7 @@ export default function Page() {
       <h1 className="text-xl font-semibold">Verificar celular</h1>
       {step === "phone" && (
         <>
-          <input className={field} inputMode="tel" placeholder="Celular, ej. 3001234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input className={field} type="tel" autoComplete="tel" inputMode="tel" placeholder="Teléfono internacional, ej. +573001234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <button className={btn} disabled={busy} onClick={async () => (await post("/api/auth/phone/send", { phone: normPhone(phone) })) && setStep("code")}>
             Enviar código por SMS
           </button>

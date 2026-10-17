@@ -1,7 +1,6 @@
-// Acepta 3001234567, 573001234567 o +573001234567 y devuelve +573001234567
+// Normalize international phone input to E.164; callers validate country-code and length.
 export function normPhone(input: string) {
-  const d = input.replace(/\D/g, "");
-  if (d.length === 10) return `+57${d}`;
-  if (d.length === 12 && d.startsWith("57")) return `+${d}`;
-  return input.trim();
+  const trimmed = input.trim();
+  const normalized = trimmed.startsWith("00") ? `+${trimmed.slice(2)}` : trimmed.startsWith("+") ? trimmed : `+${trimmed}`;
+  return `+${normalized.slice(1).replace(/\D/g, "")}`;
 }

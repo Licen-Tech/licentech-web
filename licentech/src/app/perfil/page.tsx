@@ -3,13 +3,20 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { cop } from "@/lib/format";
+import AccountSettings from "@/components/AccountSettings";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const s = await getSession();
   if (!s) redirect("/login");
-  const u = await prisma.user.findUniqueOrThrow({ where: { id: s.userId } });
+  const u = await prisma.user.findUniqueOrThrow({
+    where: { id: s.userId },
+    select: {
+      id: true, name: true, email: true, phone: true, phoneVerifiedAt: true,
+      walletBalanceCop: true, role: true, totpEnabledAt: true,
+    },
+  });
   return (
     <div className="max-w-md space-y-3">
       <h1 className="text-2xl font-semibold">Mi perfil</h1>
@@ -24,6 +31,13 @@ export default async function Page() {
           </dd>
         </div>
       </dl>
+      <AccountSettings
+        email={u.email}
+        phone={u.phone}
+        phoneVerified={Boolean(u.phoneVerifiedAt)}
+        authenticatorEnabled={Boolean(u.totpEnabledAt)}
+        isAdmin={u.role === "ADMIN"}
+      />
       <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm">
         <p className="text-stone-500">Saldo disponible</p>
         <p className="mt-1 text-lg font-semibold">{cop.format(u.walletBalanceCop)}</p>

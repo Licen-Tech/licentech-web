@@ -13,5 +13,5 @@ export async function POST(req: Request) {
   const ok = await checkPassword(parsed.data.password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !ok) return NextResponse.json({ error: "Correo o contraseña incorrectos" }, { status: 401 });
   await createSession(user);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, redirectTo: user.role === "ADMIN" ? "/admin" : "/" });
 }

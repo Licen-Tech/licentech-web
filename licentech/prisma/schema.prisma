@@ -61,12 +61,21 @@ model User {
   passwordHash       String
   phone              String?             @unique
   phoneVerifiedAt    DateTime?
+  totpSecretEnc      String?
+  totpSetupSecretEnc String?
+  totpEnabledAt      DateTime?
+  totpLastUsedStep   BigInt?
+  totpFailedAttempts Int                 @default(0)
+  totpLockedUntil    DateTime?
+  totpRecoveryCodes  TotpRecoveryCode[]
   role               Role                @default(USER)
   createdAt          DateTime            @default(now())
   walletBalanceCop   Int                 @default(0)
   orders             Order[]
   phoneCodes         PhoneCode[]
   review             CustomerReview?
+  forumTopics        ForumTopic[]
+  forumReplies       ForumReply[]
   walletTransactions WalletTransaction[]
   walletTopUps       WalletTopUp[]
 }
@@ -83,6 +92,17 @@ model PhoneCode {
   createdAt DateTime  @default(now())
 
   @@index([userId, createdAt])
+}
+
+model TotpRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
 }
 
 model Product {
@@ -146,6 +166,7 @@ model MediaAsset {
   externalUrl   String?
   createdAt     DateTime             @default(now())
   coverOf       Product[]            @relation("ProductCover")
+  siteLogos     SiteSettings[]       @relation("SiteLogo")
   galleryItems  ProductGalleryItem[]
   banners       SiteBanner[]
   tutorialItems TutorialMedia[]
@@ -179,15 +200,29 @@ model SiteBanner {
 }
 
 model SiteSettings {
-  id               String   @id @default("main")
-  siteName         String   @default("LicenTech Colombia")
-  heroTitle        String   @default("Herramientas de software para desbloqueo y mantenimiento")
-  heroDescription  String   @default("") @db.Text
-  heroNotice       String   @default("") @db.Text
-  supportEmail     String   @default("")
-  whatsappNumber   String   @default("")
-  telegramUsername String   @default("")
-  updatedAt        DateTime @updatedAt
+  id               String      @id @default("main")
+  siteName         String      @default("LicenTech Colombia")
+  heroTitle        String      @default("Herramientas de software para desbloqueo y mantenimiento")
+  heroDescription  String      @default("") @db.Text
+  heroNotice       String      @default("") @db.Text
+  supportEmail     String      @default("")
+  whatsappNumber   String      @default("")
+  telegramUsername String      @default("")
+  logoMediaId      String?     @unique
+  logoMedia        MediaAsset? @relation("SiteLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
+  updatedAt        DateTime    @updatedAt
+}
+
+model NavigationItem {
+  id        String   @id @default(cuid())
+  label     String   @db.VarChar(50)
+  href      String   @db.VarChar(300)
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
 }
 
 model SupportFaq {
@@ -318,9 +353,50 @@ model CustomerReview {
   @@index([status, createdAt])
 }
 
+model ForumTopic {
+  id        String       @id @default(cuid())
+  title     String       @db.VarChar(120)
+  content   String       @db.VarChar(2000)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images    ForumImage[]
+  replies   ForumReply[]
+  createdAt DateTime     @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model ForumReply {
+  id        String       @id @default(cuid())
+  content   String       @db.VarChar(2000)
+  topicId   String
+  topic     ForumTopic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images    ForumImage[]
+  createdAt DateTime     @default(now())
+
+  @@index([topicId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model ForumImage {
+  id       String      @id @default(cuid())
+  content  Bytes
+  mimeType String
+  topicId  String?
+  topic    ForumTopic? @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  replyId  String?
+  reply    ForumReply? @relation(fields: [replyId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([replyId])
+}
+
 model WalletTopUp {
   id            String      @id @default(cuid())
-  userId        String
+  userId        String?
   amountCop     Int
   paymentMethod String
   reference     String      @unique
@@ -329,7 +405,7 @@ model WalletTopUp {
   proofMimeType String?
   reviewedAt    DateTime?
   createdAt     DateTime    @default(now())
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
@@ -337,11 +413,11 @@ model WalletTopUp {
 
 model WalletTransaction {
   id          String   @id @default(cuid())
-  userId      String
+  userId      String?
   amountCop   Int
   description String
   createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   topUpId     String?  @unique
   orderId     String?
   order       Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)

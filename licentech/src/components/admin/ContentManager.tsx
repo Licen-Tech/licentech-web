@@ -17,11 +17,12 @@ type Tutorial = {
 };
 type PaymentMethod = { id: string; code: string; label: string; instructions: string; active: boolean; sortOrder: number };
 type Faq = { id: string; question: string; answer: string; active: boolean; sortOrder: number };
+type NavigationItem = { id: string; label: string; href: string; active: boolean; sortOrder: number };
 type SiteSettings = {
   siteName: string; heroTitle: string; heroDescription: string; heroNotice: string;
-  supportEmail: string; whatsappNumber: string; telegramUsername: string;
+  supportEmail: string; whatsappNumber: string; telegramUsername: string; logoMediaId: string | null;
 };
-type Tab = "media" | "banners" | "tutorials" | "payments" | "site" | "faqs";
+type Tab = "media" | "banners" | "tutorials" | "payments" | "site" | "navigation" | "faqs";
 
 const input = "w-full rounded border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-700";
 const button = "rounded bg-teal-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50";
@@ -34,8 +35,16 @@ const blankMethod = { code: "", label: "", instructions: "", active: false, sort
 const blankSettings: SiteSettings = {
   siteName: "LicenTech Colombia", heroTitle: "Herramientas de software para desbloqueo y mantenimiento",
   heroDescription: "", heroNotice: "", supportEmail: "brianxxp082@gmail.com", whatsappNumber: "", telegramUsername: "",
+  logoMediaId: null,
 };
 const blankFaq = { question: "", answer: "", active: true, sortOrder: 0 };
+const recommendedNavigation = [
+  { label: "Inicio", href: "/" },
+  { label: "Desbloqueos", href: "/#productos" },
+  { label: "Videos", href: "/tutoriales#videos" },
+  { label: "Comentarios", href: "/#comentarios" },
+  { label: "Foro", href: "/#foro" },
+];
 
 function errorMessage(data: unknown) {
   if (data && typeof data === "object" && "error" in data) {
@@ -60,6 +69,8 @@ export default function ContentManager() {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [settings, setSettings] = useState<SiteSettings>(blankSettings);
   const [faqs, setFaqs] = useState<Faq[]>([]);
+  const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([]);
+  const [navigationDraft, setNavigationDraft] = useState({ label: "", href: "", active: true });
   const [faqDraft, setFaqDraft] = useState(blankFaq);
   const [editingFaq, setEditingFaq] = useState<string | null>(null);
   const [bannerDraft, setBannerDraft] = useState(blankBanner);
@@ -76,20 +87,21 @@ export default function ContentManager() {
   const [busy, setBusy] = useState(false);
 
   async function load() {
-    const [mediaResponse, bannerResponse, tutorialResponse, methodResponse, settingsResponse, faqResponse] = await Promise.all([
+    const [mediaResponse, bannerResponse, tutorialResponse, methodResponse, settingsResponse, faqResponse, navigationResponse] = await Promise.all([
       fetch("/api/admin/media"),
       fetch("/api/admin/banners"),
       fetch("/api/admin/tutoriales"),
       fetch("/api/admin/payment-methods"),
       fetch("/api/admin/site-settings"),
       fetch("/api/admin/faqs"),
+      fetch("/api/admin/navigation"),
     ]);
-    if ([mediaResponse, bannerResponse, tutorialResponse, methodResponse, settingsResponse, faqResponse].some((response) => !response.ok)) {
+    if ([mediaResponse, bannerResponse, tutorialResponse, methodResponse, settingsResponse, faqResponse, navigationResponse].some((response) => !response.ok)) {
       setMessage("No se pudieron cargar todos los módulos. Verifica tu sesión de administrador e inténtalo de nuevo.");
       return;
     }
-    const [mediaData, bannerData, tutorialData, methodData, settingsData, faqData] = await Promise.all([
-      mediaResponse.json(), bannerResponse.json(), tutorialResponse.json(), methodResponse.json(), settingsResponse.json(), faqResponse.json(),
+    const [mediaData, bannerData, tutorialData, methodData, settingsData, faqData, navigationData] = await Promise.all([
+      mediaResponse.json(), bannerResponse.json(), tutorialResponse.json(), methodResponse.json(), settingsResponse.json(), faqResponse.json(), navigationResponse.json(),
     ]);
     setMedia(mediaData);
     setBanners(bannerData);
@@ -97,6 +109,7 @@ export default function ContentManager() {
     setMethods(methodData);
     setSettings(settingsData);
     setFaqs(faqData);
+    setNavigationItems(navigationData);
   }
 
   useEffect(() => {
@@ -210,6 +223,45 @@ export default function ContentManager() {
     } finally { setBusy(false); }
   }
 
+  async function saveNavigation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setMessage("");
+    try {
+      await request("/api/admin/navigation", "PUT", navigationItems.map((item) => ({
+        label: item.label,
+        href: item.href,
+        active: item.active,
+      })));
+      setMessage("Menú guardado y publicado.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar el menú.");
+    } finally { setBusy(false); }
+  }
+
+  function addNavigationItem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNavigationItems((items) => [...items, {
+      ...navigationDraft,
+      id: `new-${crypto.randomUUID()}`,
+      sortOrder: items.length,
+    }]);
+    setNavigationDraft({ label: "", href: "", active: true });
+  }
+
+  function addRecommendedNavigation() {
+    setNavigationItems((items) => {
+      const existing = new Set(items.map((item) => item.href));
+      const missing = recommendedNavigation
+        .filter((item) => !existing.has(item.href))
+        .slice(0, Math.max(0, 20 - items.length));
+      return [...items, ...missing.map((item, index) => ({
+        ...item,
+        id: `recommended-${crypto.randomUUID()}-${index}`,
+        active: true,
+        sortOrder: items.length + index,
+      }))];
+    });
+  }
+
   async function saveFaq(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setMessage("");
     try {
@@ -233,9 +285,10 @@ export default function ContentManager() {
   const tabs: { id: Tab; label: string }[] = [
     { id: "media", label: "Biblioteca multimedia" },
     { id: "banners", label: "Banners" },
-    { id: "tutorials", label: "Tutoriales y descargas" },
+    { id: "tutorials", label: "Videos, tutoriales y descargas" },
     { id: "payments", label: "Métodos de pago" },
     { id: "site", label: "Inicio y contacto" },
+    { id: "navigation", label: "Menú del sitio" },
     { id: "faqs", label: "Bot de preguntas frecuentes" },
   ];
 
@@ -316,11 +369,15 @@ export default function ContentManager() {
       {tab === "tutorials" && (
         <div className="space-y-5">
           <form className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-2" onSubmit={saveTutorial}>
-            <h2 className="font-medium sm:col-span-2">{editingTutorial ? "Editar tutorial" : "Crear tutorial"}</h2>
+            <h2 className="font-medium sm:col-span-2">{editingTutorial ? "Editar video o tutorial" : "Publicar video o tutorial"}</h2>
+            <p className="text-sm text-stone-600 sm:col-span-2">
+              Pega un enlace de YouTube y marca «Publicar» para mostrar el reproductor en la página del tutorial.
+              El video se sirve desde YouTube; en la base de datos solo guardamos el enlace, no el archivo de video.
+            </p>
             <input className={input} placeholder="Título" value={tutorialDraft.title} required onChange={(event) => setTutorialDraft({ ...tutorialDraft, title: event.target.value })} />
             <input className={input} placeholder="Enlace (slug-ejemplo)" value={tutorialDraft.slug} pattern="[a-z0-9-]+" required onChange={(event) => setTutorialDraft({ ...tutorialDraft, slug: event.target.value })} />
             <input className={input} placeholder="Categoría / marca (Samsung, Xiaomi…)" value={tutorialDraft.category} required onChange={(event) => setTutorialDraft({ ...tutorialDraft, category: event.target.value })} />
-            <input className={input} type="url" placeholder="Enlace de YouTube (opcional)" value={tutorialDraft.youtubeUrl} onChange={(event) => setTutorialDraft({ ...tutorialDraft, youtubeUrl: event.target.value })} />
+            <input className={input} type="url" placeholder="URL de YouTube (el video se reproduce en la página)" value={tutorialDraft.youtubeUrl} onChange={(event) => setTutorialDraft({ ...tutorialDraft, youtubeUrl: event.target.value })} />
             <textarea className={`${input} sm:col-span-2`} rows={2} placeholder="Resumen" value={tutorialDraft.summary} onChange={(event) => setTutorialDraft({ ...tutorialDraft, summary: event.target.value })} />
             <textarea className={`${input} sm:col-span-2`} rows={8} placeholder="Contenido paso a paso (texto)" value={tutorialDraft.content} required onChange={(event) => setTutorialDraft({ ...tutorialDraft, content: event.target.value })} />
             <fieldset className="space-y-2 sm:col-span-2">
@@ -389,14 +446,86 @@ export default function ContentManager() {
         <form className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-2" onSubmit={saveSettings}>
           <h2 className="font-medium sm:col-span-2">Portada y canales de atención</h2>
           <label className="space-y-1 text-sm"><span>Nombre del sitio</span><input className={input} value={settings.siteName} maxLength={100} required onChange={(event) => setSettings({ ...settings, siteName: event.target.value })} /></label>
+              <label className="space-y-1 text-sm">
+                <span>Logo de la marca (súbelo primero a la biblioteca multimedia)</span>
+                <select className={input} value={settings.logoMediaId ?? ""} onChange={(event) => setSettings({ ...settings, logoMediaId: event.target.value || null })}>
+                  <option value="">Sin logo</option>
+                  {media.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+              {settings.logoMediaId && (() => {
+                const selectedLogo = media.find((item) => item.id === settings.logoMediaId);
+                return selectedLogo ? (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Image src={selectedLogo.externalUrl ?? `/api/media/${selectedLogo.id}`} alt={selectedLogo.altText || selectedLogo.name} width={48} height={48} unoptimized className="h-12 w-12 rounded object-contain" />
+                    <span>Vista previa del logo</span>
+                  </div>
+                ) : null;
+              })()}
           <label className="space-y-1 text-sm"><span>Título principal</span><input className={input} value={settings.heroTitle} maxLength={180} required onChange={(event) => setSettings({ ...settings, heroTitle: event.target.value })} /></label>
           <label className="space-y-1 text-sm sm:col-span-2"><span>Texto de portada</span><textarea className={input} rows={4} value={settings.heroDescription} maxLength={2000} onChange={(event) => setSettings({ ...settings, heroDescription: event.target.value })} /></label>
           <label className="space-y-1 text-sm sm:col-span-2"><span>Aviso de compra</span><textarea className={input} rows={2} value={settings.heroNotice} maxLength={1000} onChange={(event) => setSettings({ ...settings, heroNotice: event.target.value })} /></label>
           <label className="space-y-1 text-sm"><span>Correo de soporte</span><input className={input} type="email" value={settings.supportEmail} onChange={(event) => setSettings({ ...settings, supportEmail: event.target.value })} /></label>
           <label className="space-y-1 text-sm"><span>WhatsApp con código de país</span><input className={input} type="tel" placeholder="+573001234567" value={settings.whatsappNumber} onChange={(event) => setSettings({ ...settings, whatsappNumber: event.target.value })} /></label>
           <label className="space-y-1 text-sm"><span>Usuario de Telegram</span><input className={input} placeholder="@usuario" value={settings.telegramUsername} onChange={(event) => setSettings({ ...settings, telegramUsername: event.target.value })} /></label>
-          <button className={button} disabled={busy}>Guardar información del sitio</button>
+          <button className={button} disabled={busy}>Guardar logo e información del sitio</button>
         </form>
+      )}
+
+      {tab === "navigation" && (
+        <div className="space-y-5">
+          <div className="rounded-lg border border-stone-200 bg-white p-4">
+            <h2 className="font-medium">Accesos del menú de navegación</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Organiza los botones que aparecen debajo del banner en todas las páginas. Para enlazar una sección de inicio, usa una ruta como /#productos; se aceptan rutas internas y direcciones HTTPS.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className={button} onClick={addRecommendedNavigation}>Agregar accesos recomendados</button>
+              <span className="self-center text-xs text-stone-500">Inicio · Desbloqueos · Videos · Comentarios · Foro</span>
+            </div>
+          </div>
+          <form className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-2" onSubmit={addNavigationItem}>
+            <h3 className="font-medium sm:col-span-2">Agregar una opción personalizada</h3>
+            <input className={input} placeholder="Texto del botón, por ejemplo Ofertas" maxLength={50} value={navigationDraft.label} required onChange={(event) => setNavigationDraft({ ...navigationDraft, label: event.target.value })} />
+            <input className={input} placeholder="Destino: /#productos o https://ejemplo.com" maxLength={300} value={navigationDraft.href} required onChange={(event) => setNavigationDraft({ ...navigationDraft, href: event.target.value })} />
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={navigationDraft.active} onChange={(event) => setNavigationDraft({ ...navigationDraft, active: event.target.checked })} /> Mostrar en el sitio</label>
+            <button className={button} disabled={navigationItems.length >= 20}>Agregar al menú</button>
+          </form>
+          <form className="space-y-3" onSubmit={saveNavigation}>
+            {navigationItems.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-stone-300 p-6 text-sm text-stone-500">El menú está vacío. Agrega opciones o carga los accesos recomendados.</p>
+            ) : navigationItems.map((item, index) => (
+              <article key={item.id} className="grid items-center gap-2 rounded-lg border border-stone-200 bg-white p-3 sm:grid-cols-[1fr_1.5fr_auto_auto]">
+                <label className="space-y-1 text-xs text-stone-500">
+                  <span>Texto</span>
+                  <input className={input} maxLength={50} value={item.label} required onChange={(event) => setNavigationItems((items) => items.map((current) => current.id === item.id ? { ...current, label: event.target.value } : current))} />
+                </label>
+                <label className="space-y-1 text-xs text-stone-500">
+                  <span>Destino</span>
+                  <input className={input} maxLength={300} value={item.href} required onChange={(event) => setNavigationItems((items) => items.map((current) => current.id === item.id ? { ...current, href: event.target.value } : current))} />
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={item.active} onChange={(event) => setNavigationItems((items) => items.map((current) => current.id === item.id ? { ...current, active: event.target.checked } : current))} />
+                  Visible
+                </label>
+                <div className="flex items-center gap-2">
+                  <button type="button" className="rounded border border-stone-300 px-2 py-1" aria-label={`Mover ${item.label} hacia arriba`} disabled={index === 0} onClick={() => setNavigationItems((items) => {
+                    const reordered = [...items];
+                    [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
+                    return reordered;
+                  })}>↑</button>
+                  <button type="button" className="rounded border border-stone-300 px-2 py-1" aria-label={`Mover ${item.label} hacia abajo`} disabled={index === navigationItems.length - 1} onClick={() => setNavigationItems((items) => {
+                    const reordered = [...items];
+                    [reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]];
+                    return reordered;
+                  })}>↓</button>
+                  <button type="button" className="text-sm text-red-700 underline" onClick={() => setNavigationItems((items) => items.filter((current) => current.id !== item.id))}>Quitar</button>
+                </div>
+              </article>
+            ))}
+            <button className={button} disabled={busy}>Guardar y publicar menú</button>
+          </form>
+        </div>
       )}
 
       {tab === "faqs" && (

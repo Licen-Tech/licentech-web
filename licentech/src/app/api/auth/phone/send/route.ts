@@ -4,13 +4,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { hmac } from "@/lib/crypto";
-import { phoneCO } from "@/lib/validation";
+import { phoneE164 } from "@/lib/validation";
 import { sendSms } from "@/lib/sms";
 
 export async function POST(req: Request) {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  const parsed = z.object({ phone: phoneCO }).safeParse(await req.json().catch(() => null));
+  const parsed = z.object({ phone: phoneE164 }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Celular inválido" }, { status: 400 });
   const { phone } = parsed.data;
 

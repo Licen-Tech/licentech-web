@@ -12,6 +12,7 @@ const defaults = {
   supportEmail: "brianxxp082@gmail.com",
   whatsappNumber: "",
   telegramUsername: "",
+  logoMediaId: null,
 };
 
 export async function GET() {
@@ -27,6 +28,12 @@ export async function PATCH(req: Request) {
   if (!(await requireAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const parsed = siteSettingsSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  if (parsed.data.logoMediaId && !await prisma.mediaAsset.findUnique({
+    where: { id: parsed.data.logoMediaId },
+    select: { id: true },
+  })) {
+    return NextResponse.json({ error: "El logo seleccionado ya no está disponible." }, { status: 400 });
+  }
   return NextResponse.json(await prisma.siteSettings.upsert({
     where: { id: "main" },
     create: { ...defaults, ...parsed.data },
