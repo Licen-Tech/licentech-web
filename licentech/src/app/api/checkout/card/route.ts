@@ -37,15 +37,14 @@ export async function POST(req: Request) {
   } catch (error) {
     // El detalle completo queda en los logs del servidor.
     console.error("Error creando el checkout de Wompi:", error);
-    const detail = error instanceof Error ? error.message : "";
-    // DEPURACIÓN TEMPORAL: muestra solo nombres de variables y el entorno de Vercel, nunca valores. Quitar al terminar.
-    if (/^(Faltan variables de Wompi|Las llaves y secretos de Wompi)/.test(detail)) {
-      return NextResponse.json({
-        error: `${detail}. Entorno de despliegue: ${process.env.VERCEL_ENV ?? "desconocido"}.`,
-      }, { status: 503 });
-    }
+    // DEPURACIÓN TEMPORAL (quitar al terminar): error real, commit desplegado, entorno y si cada variable existe (sí/no). Nunca valores.
+    const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    const present = (value: string | undefined) => (value && value.trim() ? "sí" : "no");
+    const vars = `PUB=${present(process.env.WOMPI_PUBLIC_KEY)} PRIV=${present(process.env.WOMPI_PRIVATE_KEY)} INT=${present(process.env.WOMPI_INTEGRITY_SECRET)} EVT=${present(process.env.WOMPI_EVENTS_SECRET)} APP_URL=${present(process.env.APP_URL)}`;
+    const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? "desconocido").slice(0, 7);
+    const environment = process.env.VERCEL_ENV ?? "desconocido";
     return NextResponse.json({
-      error: "El pago con tarjeta no está disponible en este momento. Usa el pago manual o inténtalo más tarde.",
+      error: `DEBUG · ${detail.slice(0, 300)} · variables: ${vars} · commit ${commit} · entorno ${environment}`,
     }, { status: 503 });
   }
 
