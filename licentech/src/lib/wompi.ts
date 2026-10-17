@@ -6,10 +6,16 @@ const PLACEHOLDER = /(?:xxx|replace[-_ ]?me|your[-_ ]?(?:key|secret))/i;
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
-// Limpia espacios, saltos de línea y comillas que suelen colarse al pegar secretos en .env / Codespaces / Vercel.
-function env(name: string): string {
-  return (process.env[name] ?? "").trim().replace(/^["']|["']$/g, "").trim();
+// Limpia espacios, saltos de línea y comillas que suelen colarse al pegar secretos.
+function clean(value: string | undefined): string {
+  return (value ?? "").trim().replace(/^["']|["']$/g, "").trim();
 }
+
+// Lectura directa de cada variable, igual que el resto del proyecto (sin process.env[nombre]).
+const readPublicKey = () => clean(process.env.WOMPI_PUBLIC_KEY);
+const readPrivateKey = () => clean(process.env.WOMPI_PRIVATE_KEY);
+const readIntegritySecret = () => clean(process.env.WOMPI_INTEGRITY_SECRET);
+const readEventsSecret = () => clean(process.env.WOMPI_EVENTS_SECRET);
 
 type WompiMode = "test" | "prod";
 
@@ -19,11 +25,12 @@ function modeFromPublicKey(publicKey: string): WompiMode | null {
   return null;
 }
 
-// Si WOMPI_API_URL falta o no coincide con el entorno de las llaves, se usa la URL oficial correcta.
+// La URL de la API sale de las llaves, así no depende de WOMPI_API_URL.
 function apiBase(): string {
-  const mode = modeFromPublicKey(env("WOMPI_PUBLIC_KEY")) ?? (env("WOMPI_PRIVATE_KEY").startsWith("prv_prod_") ? "prod" : "test");
+  const mode = modeFromPublicKey(readPublicKey())
+    ?? (readPrivateKey().startsWith("prv_prod_") ? "prod" : "test");
   const expected = mode === "prod" ? PRODUCTION_API : SANDBOX_API;
-  const configured = env("WOMPI_API_URL").replace(/\/+$/, "");
+  const configured = clean(process.env.WOMPI_API_URL).replace(/\/+$/, "");
   if (configured && configured !== expected) {
     console.warn(`WOMPI_API_URL (${configured}) no coincide con las llaves ${mode}; se usa ${expected}`);
   }
@@ -31,7 +38,7 @@ function apiBase(): string {
 }
 
 async function wompi<T>(path: string, init?: RequestInit): Promise<T> {
-  const privateKey = env("WOMPI_PRIVATE_KEY");
+  const privateKey = readPrivateKey();
   if (!privateKey || PLACEHOLDER.test(privateKey)) {
     throw new Error("Falta configurar WOMPI_PRIVATE_KEY");
   }
@@ -52,10 +59,10 @@ export const getTransaction = (id: string) =>
   }>(`/transactions/${encodeURIComponent(id)}`);
 
 export function createWebCheckoutUrl(reference: string, amountCop: number, customerEmail: string, redirectUrl: string) {
-  const publicKey = env("WOMPI_PUBLIC_KEY");
-  const privateKey = env("WOMPI_PRIVATE_KEY");
-  const integritySecret = env("WOMPI_INTEGRITY_SECRET");
-  const eventsSecret = env("WOMPI_EVENTS_SECRET");
+  const publicKey = readPublicKey();
+  const privateKey = readPrivateKey();
+  const integritySecret = readIntegritySecret();
+  const eventsSecret = readEventsSecret();
   const missing = [
     ["WOMPI_PUBLIC_KEY", publicKey],
     ["WOMPI_PRIVATE_KEY", privateKey],
@@ -112,7 +119,7 @@ export function verifyEvent(event: unknown): boolean {
   const props = event.signature.properties;
   const checksum = event.signature.checksum;
   const timestamp = event.timestamp;
-  const eventsSecret = env("WOMPI_EVENTS_SECRET");
+  const eventsSecret = readEventsSecret();
   if (!eventsSecret || !Array.isArray(props) || !props.every((path): path is string => typeof path === "string")
     || typeof checksum !== "string" || (typeof timestamp !== "string" && typeof timestamp !== "number")) {
     return false;
