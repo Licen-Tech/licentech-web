@@ -56,9 +56,14 @@ export function createWebCheckoutUrl(reference: string, amountCop: number, custo
   const privateKey = env("WOMPI_PRIVATE_KEY");
   const integritySecret = env("WOMPI_INTEGRITY_SECRET");
   const eventsSecret = env("WOMPI_EVENTS_SECRET");
-  const appUrl = env("APP_URL");
-  if (!publicKey || !privateKey || !integritySecret || !eventsSecret || !appUrl) {
-    throw new Error("Las llaves y secretos de Wompi están incompletos");
+  const missing = [
+    ["WOMPI_PUBLIC_KEY", publicKey],
+    ["WOMPI_PRIVATE_KEY", privateKey],
+    ["WOMPI_INTEGRITY_SECRET", integritySecret],
+    ["WOMPI_EVENTS_SECRET", eventsSecret],
+  ].filter(([, value]) => !value).map(([name]) => name);
+  if (missing.length > 0) {
+    throw new Error(`Faltan variables de Wompi: ${missing.join(", ")}`);
   }
   const mode = modeFromPublicKey(publicKey);
   const hasExampleCredentials = [publicKey, privateKey, integritySecret, eventsSecret]
