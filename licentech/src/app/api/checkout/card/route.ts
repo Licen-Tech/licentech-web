@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const session = await getSession();
 
   const parsed = cardCheckoutSchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Revisa los datos del comprador: nombre, correo y WhatsApp son obligatorios." }, { status: 400 });
 
   const lines = normalizeCheckoutItems(parsed.data);
   const [user, resolved] = await Promise.all([
@@ -32,44 +32,48 @@ export async function POST(req: Request) {
   let orderAccess: ReturnType<typeof createOrderAccess>;
   let checkoutUrl: string;
   try {
-    orderAccess = createOrderAccess(reference);
+    orderAccess = createOrderAccess(reference, new URL(req.url).origin);
     checkoutUrl = createWebCheckoutUrl(reference, amountCop, buyer.buyerEmail, orderAccess.trackingUrl);
   } catch (error) {
     console.error("Error creando el checkout de Wompi:", error);
     const detail = error instanceof Error ? error.message : "";
-    const isUrlError = /invalid url/i.test(detail);
     return NextResponse.json({
-      error: isUrlError
-        ? "APP_URL no es válida. Debe incluir el protocolo, por ejemplo https://tudominio.co"
+      error: /^(Faltan variables|APP_URL)/.test(detail)
+        ? detail
         : "Revisa que las llaves y secretos de Wompi sean válidos y pertenezcan todos al mismo entorno (Sandbox o Producción).",
     }, { status: 503 });
   }
 
-  await prisma.order.create({
-    data: {
-      reference,
-      userId: user?.id,
-      buyerName: buyer.buyerName,
-      buyerEmail: buyer.buyerEmail,
-      buyerPhone: buyer.buyerPhone,
-      activationEmail: resolved.lines[0]?.activationEmail,
-      accessTokenHash: orderAccess.accessTokenHash,
-      productId: resolved.lines[0].productId,
-      quantity: resolved.lines.reduce((sum, line) => sum + line.quantity, 0),
-      amountCop,
-      paymentMethod: "CARD",
-      items: {
-        create: resolved.lines.map((line) => ({
-          productId: line.productId,
-          quantity: line.quantity,
-          unitPriceCop: line.unitPriceCop,
-          activationEmail: line.activationEmail,
-          rentalDuration: line.rentalDuration,
-          rentalUnit: line.rentalUnit,
-        })),
+  try {
+    await prisma.order.create({
+      data: {
+        reference,
+        userId: user?.id,
+        buyerName: buyer.buyerName,
+        buyerEmail: buyer.buyerEmail,
+        buyerPhone: buyer.buyerPhone,
+        activationEmail: resolved.lines[0]?.activationEmail,
+        accessTokenHash: orderAccess.accessTokenHash,
+        productId: resolved.lines[0].productId,
+        quantity: resolved.lines.reduce((sum, line) => sum + line.quantity, 0),
+        amountCop,
+        paymentMethod: "CARD",
+        items: {
+          create: resolved.lines.map((line) => ({
+            productId: line.productId,
+            quantity: line.quantity,
+            unitPriceCop: line.unitPriceCop,
+            activationEmail: line.activationEmail,
+            rentalDuration: line.rentalDuration,
+            rentalUnit: line.rentalUnit,
+          })),
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("No se pudo guardar el pedido (tarjeta):", error);
+    return NextResponse.json({ error: "No pudimos guardar tu pedido. Inténtalo de nuevo en unos minutos." }, { status: 500 });
+  }
 
   return NextResponse.json({ checkoutUrl });
 }
